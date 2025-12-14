@@ -7,14 +7,31 @@
         x:Class="SuperSMPLauncher.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="SuperSMPLauncher">
-
+        Title="SuperSMP Launcher">
+    
+    <Window.Background>
+        <ImageBrush Source="avares://SuperSMPLauncher/Assets/background.png"
+                    Stretch="UniformToFill" />
+    </Window.Background>
+    
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
+    
+    
+    <StackPanel Margin="20" Spacing="12">
+        <TextBlock Text="Choose a Modloader" FontSize="18" />
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <ComboBox Items="{Binding Modloaders}"
+                  SelectedItem="{Binding SelectedModloader}"
+                  Width="200" />
+
+        <Button Content="Download Modpack"
+                Command="{Binding DownloadModpackCommand}"
+                Width="200" />
+    </StackPanel>
+
 
 </Window>
