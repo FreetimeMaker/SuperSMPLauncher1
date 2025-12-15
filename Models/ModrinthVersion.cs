@@ -10,5 +10,5 @@ public class ModrinthVersion
     public List<ModrinthFile> Files { get; set; }
 
     // WICHTIG: Modloader-Info
-    public List<string> Loaders { get; set; }
+    public List<string> Platforms { get; set; }
 }

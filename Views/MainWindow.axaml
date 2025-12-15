@@ -24,7 +24,7 @@
     <StackPanel Margin="20" Spacing="12">
         <TextBlock Text="Choose a Modloader" FontSize="18" />
 
-        <ComboBox Items="{Binding Modloaders}"
+        <ComboBox ItemsSource="{Binding Modloaders}"
                   SelectedItem="{Binding SelectedModloader}"
                   Width="200" />
 

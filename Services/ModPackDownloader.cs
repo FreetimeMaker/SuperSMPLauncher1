@@ -18,15 +18,14 @@ public class ModpackDownloader
     {
         var versions = await _api.GetVersionsAsync(projectId);
 
-        // Filter nach Modloader
         var filtered = versions
-            .Where(v => v.Loaders.Contains(modloader.ToLower()))
+            .Where(v => v.Platforms != null &&
+                        v.Platforms.Any(p => p.Equals(modloader, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
         if (filtered.Count == 0)
             throw new Exception($"Keine Version für Modloader '{modloader}' gefunden!");
 
-        // Neueste Version auswählen
         var latest = filtered
             .OrderByDescending(v => v.VersionNumber)
             .First();
