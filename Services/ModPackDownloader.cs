@@ -13,58 +13,81 @@ public class ModpackDownloader
     // Erweiterbare Alias-Liste für Fabric
     private static readonly string[] FabricAliases = new[] { "fabric", "fabric-loader", "fabric_loader" };
 
-        public async Task<string> DownloadLatestForLoaderAsync(
-        string projectId,
-        string modloader,
-        string outputDir)
+    public async Task<string> DownloadLatestForLoaderAsync(
+    string projectId,
+    string modloader,
+    string outputDir)
     {
         var versions = await _api.GetVersionsAsync(projectId);
+        if (versions == null || versions.Count == 0)
+            throw new Exception($"Keine Versionsdaten für Projekt '{projectId}' erhalten.");
 
-        string desired = (modloader ?? "").Trim();
-        var aliasSet = new[] { "fabric", "fabric-loader", "fabric_loader", desired }
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x.Trim().ToLowerInvariant())
-            .Distinct()
-            .ToArray();
+        string desired = (modloader ?? "").Trim().ToLowerInvariant();
+        var aliasList = new System.Collections.Generic.List<string> { "fabric", "fabric-loader", "fabric_loader" };
+        if (!string.IsNullOrWhiteSpace(desired) && !aliasList.Contains(desired))
+            aliasList.Add(desired);
 
-        var filtered = versions
-            .Where(v => v.Loaders != null &&
-                        v.Loaders.Any(l => aliasSet.Contains(l.Trim().ToLowerInvariant())))
-            .ToList();
-
-        if (!filtered.Any())
+        // Filter: prüfe explizit auf null und iteriere ohne SelectMany-Typinferenz
+        var filtered = new System.Collections.Generic.List<ModrinthVersion>();
+        foreach (var v in versions)
         {
-            var available = versions
-                .Where(v => v.Loaders != null)
-                .SelectMany(v => v.Loaders)
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Select(l => l.Trim())
-                .Distinct();
+            var platforms = v.Platforms;
+            if (platforms == null) continue;
+            foreach (var p in platforms)
+            {
+                if (p == null) continue;
+                var pnorm = p.Trim().ToLowerInvariant();
+                if (aliasList.Contains(pnorm))
+                {
+                    filtered.Add(v);
+                    break;
+                }
+            }
+        }
+
+        if (filtered.Count == 0)
+        {
+            var available = new System.Collections.Generic.HashSet<string>();
+            foreach (var v in versions)
+            {
+                var platforms = v.Platforms;
+                if (platforms == null) continue;
+                foreach (var p in platforms)
+                {
+                    if (string.IsNullOrWhiteSpace(p)) continue;
+                    available.Add(p.Trim());
+                }
+            }
+
             throw new Exception($"Keine Version für Modloader '{modloader}' gefunden! Gefundene Loader-Bezeichnungen: {string.Join(", ", available)}");
         }
 
-        // sichere Auswahl der neuesten vorhandenen Version (lexikographisch nach VersionNumber)
-        var latestVersion = filtered
-            .OrderByDescending(v => v.VersionNumber ?? string.Empty)
-            .First();
+        // Wähle lexikographisch größte VersionNumber (fallback auf erstes)
+        ModrinthVersion latestVersion = filtered[0];
+        for (int i = 1; i < filtered.Count; i++)
+        {
+            var a = filtered[i].VersionNumber ?? string.Empty;
+            var b = latestVersion.VersionNumber ?? string.Empty;
+            if (string.Compare(a, b, System.StringComparison.Ordinal) > 0)
+                latestVersion = filtered[i];
+        }
 
-        if (latestVersion.Files == null || !latestVersion.Files.Any())
+        if (latestVersion.Files == null || latestVersion.Files.Count == 0)
             throw new Exception("Die gefundene Version enthält keine Dateien.");
 
-        var file = latestVersion.Files.First();
+        var file = latestVersion.Files[0];
         var filename = file.Filename ?? $"{projectId}.zip";
         var outputPath = Path.Combine(outputDir, filename);
-
-        Directory.CreateDirectory(outputDir);
+        System.IO.Directory.CreateDirectory(outputDir);
 
         using var client = new HttpClient();
         var url = file.Url ?? throw new Exception("Datei-URL fehlt.");
-        using var response = await client.GetAsync(url);
+        var response = await client.GetAsync(url);
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Download fehlgeschlagen: {response.StatusCode}");
 
         await using var stream = await response.Content.ReadAsStreamAsync();
-        await using var fileStream = File.Create(outputPath);
+        await using var fileStream = System.IO.File.Create(outputPath);
         await stream.CopyToAsync(fileStream);
 
         return outputPath;
