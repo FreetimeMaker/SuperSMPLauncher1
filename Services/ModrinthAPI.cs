@@ -12,7 +12,7 @@ public class ModrinthApi
 
     public async Task<List<ModrinthVersion>> GetVersionsAsync(string projectId)
     {
-        var url = $"https://api.modrinth.com/v2/project/EDFggNY3/version";
+        var url = $"https://api.modrinth.com/v2/project/supersmp-pack/version";
         var json = await _client.GetStringAsync(url);
 
         return JsonSerializer.Deserialize<List<ModrinthVersion>>(json)!;
