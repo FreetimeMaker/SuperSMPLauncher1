@@ -5,8 +5,8 @@ namespace SuperSMPLauncher.Models;
 public class ModrinthFile
 {
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string? Url { get; set; }
 
     [JsonPropertyName("filename")]
-    public string Filename { get; set; }
+    public string? Filename { get; set; }
 }

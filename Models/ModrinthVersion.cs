@@ -5,10 +5,18 @@ namespace SuperSMPLauncher.Models;
 
 public class ModrinthVersion
 {
-    public string Id { get; set; }
-    public string VersionNumber { get; set; }
-    public List<ModrinthFile> Files { get; set; }
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 
-    // WICHTIG: Modloader-Info
-    public List<string> Platforms { get; set; }
+    [JsonPropertyName("version_number")]
+    public string? VersionNumber { get; set; }
+
+    [JsonPropertyName("files")]
+    public List<ModrinthFile>? Files { get; set; }
+
+    [JsonPropertyName("platforms")]
+    public List<string>? Platforms { get; set; }
+
+    [JsonPropertyName("loaders")]
+    public List<string>? Loaders { get; set; }
 }
