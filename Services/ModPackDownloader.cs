@@ -1,116 +1,174 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using SuperSMPLauncher.Models;
 
-namespace SuperSMPLauncher.Services;
-
-public class ModpackDownloader
+namespace SuperSMPLauncher.Services
 {
-    private readonly ModrinthApi _api = new();
+    public class ModpackDownloader
+    {
+        private readonly ModrinthApi _api = new ModrinthApi();
+        private static readonly HttpClient _httpClient = new HttpClient();
 
-    // Erweiterbare Alias-Liste für Fabric
-    private static readonly string[] FabricAliases = new[] { "fabric", "fabric-loader", "fabric_loader" };
+        private static readonly HashSet<string> FabricAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "fabric", "fabric-loader", "fabric_loader" 
+        };
 
         public async Task<string> DownloadLatestForLoaderAsync(
-        string projectId,
-        string modloader,
-        string outputDir)
-    {
-        var versions = await _api.GetVersionsAsync(projectId) as System.Collections.Generic.List<ModrinthVersion>;
-        if (versions == null)
-            throw new Exception("GetVersionsAsync returned unexpected type.");
-
-        string desired = (modloader ?? "").Trim().ToLowerInvariant();
-        var aliasList = new System.Collections.Generic.List<string> { "fabric", "fabric-loader", "fabric_loader" };
-        if (!string.IsNullOrWhiteSpace(desired) && !aliasList.Contains(desired))
-            aliasList.Add(desired);
-
-        // Filter: prüfe sowohl Platforms als auch Loaders (falls vorhanden)
-        var filtered = new System.Collections.Generic.List<ModrinthVersion>();
-        foreach (var v in versions)
+            string projectId, 
+            string modloader, 
+            string outputDir)
         {
-            // Prüfe Platforms
-            var platforms = v.Platforms;
-            if (platforms != null)
-            {
-                foreach (var p in platforms)
-                {
-                    if (string.IsNullOrWhiteSpace(p)) continue;
-                    var pnorm = p.Trim().ToLowerInvariant();
-                    if (aliasList.Contains(pnorm))
-                    {
-                        filtered.Add(v);
-                        break;
-                    }
-                }
+            // 1. VALIDIERUNG
+            if (string.IsNullOrWhiteSpace(projectId))
+                throw new ArgumentException("Project ID darf nicht leer sein.", nameof(projectId));
+            
+            if (string.IsNullOrWhiteSpace(outputDir))
+                throw new ArgumentException("Output directory darf nicht leer sein.", nameof(outputDir));
 
-                if (filtered.Contains(v)) continue;
-            }
+            // 2. VERSIONEN VON API HOLEN
+            Console.WriteLine($"Lade Versionen für '{projectId}'...");
+            var versions = await _api.GetVersionsAsync(projectId);
+            
+            if (versions == null || !versions.Any())
+                throw new Exception($"Keine Versionen für '{projectId}' gefunden.");
 
-            // Prüfe Loaders (falls API andere Property nutzt)
-            var loaders = v.Loaders;
-            if (loaders != null)
-            {
-                foreach (var l in loaders)
-                {
-                    if (string.IsNullOrWhiteSpace(l)) continue;
-                    var lnorm = l.Trim().ToLowerInvariant();
-                    if (aliasList.Contains(lnorm))
-                    {
-                        filtered.Add(v);
-                        break;
-                    }
-                }
-            }
-        }
+            // 3. LOADER FILTERN
+            string desired = (modloader ?? "").Trim().ToLowerInvariant();
+            var aliasList = new HashSet<string>(FabricAliases, StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(desired) && !aliasList.Contains(desired))
+                aliasList.Add(desired);
 
-        if (filtered.Count == 0)
-        {
-            var available = new System.Collections.Generic.HashSet<string>();
+            // Filtere Versionen nach Loader
+            var filtered = new List<ModrinthVersion>();
             foreach (var v in versions)
             {
-                if (v.Platforms != null)
-                    foreach (var p in v.Platforms)
-                        if (!string.IsNullOrWhiteSpace(p)) available.Add(p.Trim());
-                if (v.Loaders != null)
-                    foreach (var l in v.Loaders)
-                        if (!string.IsNullOrWhiteSpace(l)) available.Add(l.Trim());
+                if (v.Loaders != null && v.Loaders.Any(l => 
+                    !string.IsNullOrWhiteSpace(l) && 
+                    aliasList.Contains(l.Trim().ToLowerInvariant())))
+                {
+                    filtered.Add(v);
+                }
             }
 
-            throw new Exception($"Keine Version für Modloader '{modloader}' gefunden! Gefundene Loader-Bezeichnungen: {string.Join(", ", available)}");
+            Console.WriteLine($"Gefunden: {versions.Length} Versionen total, {filtered.Count} mit Loader '{modloader}'");
+
+            if (filtered.Count == 0)
+            {
+                // Sammle alle verfügbaren Loader
+                var allLoaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var v in versions)
+                {
+                    if (v.Loaders != null)
+                    {
+                        foreach (var l in v.Loaders)
+                        {
+                            if (!string.IsNullOrWhiteSpace(l))
+                                allLoaders.Add(l.Trim());
+                        }
+                    }
+                }
+
+                throw new Exception(
+                    $"Keine Version für Modloader '{modloader}' gefunden!\n" +
+                    $"Verfügbare Loader: {string.Join(", ", allLoaders.OrderBy(l => l))}"
+                );
+            }
+
+            // 4. NEUESTE VERSION FINDEN (OHNE LINQ-PROBLEME)
+            ModrinthVersion latestVersion = null;
+            foreach (var version in filtered)
+            {
+                if (latestVersion == null)
+                {
+                    latestVersion = version;
+                    continue;
+                }
+
+                var currentVersion = TryParseVersion(version.VersionNumber);
+                var bestVersion = TryParseVersion(latestVersion.VersionNumber);
+                
+                // Vergleiche Versionen
+                if (currentVersion > bestVersion)
+                {
+                    latestVersion = version;
+                }
+                else if (currentVersion == bestVersion)
+                {
+                    // Bei gleicher Version, neuestes Datum nehmen
+                    if (version.DatePublished > latestVersion.DatePublished)
+                    {
+                        latestVersion = version;
+                    }
+                }
+            }
+
+            if (latestVersion == null)
+                throw new Exception("Konnte neueste Version nicht bestimmen.");
+
+            Console.WriteLine($"Neueste Version: {latestVersion.VersionNumber} (vom {latestVersion.DatePublished:dd.MM.yyyy})");
+
+            // 5. DATEIEN PRÜFEN
+            if (latestVersion.Files == null || !latestVersion.Files.Any())
+                throw new Exception($"Version {latestVersion.VersionNumber} hat keine Dateien.");
+
+            // Primäre Datei finden
+            ModrinthFile primaryFile = null;
+            foreach (var file in latestVersion.Files)
+            {
+                if (file.Primary)
+                {
+                    primaryFile = file;
+                    break;
+                }
+            }
+            
+            // Fallback: erste Datei
+            if (primaryFile == null)
+                primaryFile = latestVersion.Files[0];
+
+            if (primaryFile == null || string.IsNullOrWhiteSpace(primaryFile.Url))
+                throw new Exception("Keine Download-URL gefunden.");
+
+            Console.WriteLine($"Lade herunter: {primaryFile.Filename} ({primaryFile.Size / 1024 / 1024} MB)");
+
+            // 6. HERUNTERLADEN
+            var filename = string.IsNullOrWhiteSpace(primaryFile.Filename) 
+                ? $"{projectId}-{latestVersion.VersionNumber}.mrpack" 
+                : primaryFile.Filename;
+
+            var outputPath = Path.Combine(outputDir, filename);
+            Directory.CreateDirectory(outputDir);
+
+            using var response = await _httpClient.GetAsync(primaryFile.Url);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var fileStream = File.Create(outputPath);
+            await stream.CopyToAsync(fileStream);
+
+            Console.WriteLine($"✅ Download abgeschlossen: {outputPath}");
+            return outputPath;
         }
 
-        // Wähle lexikographisch größte VersionNumber (Fallback: erstes Element)
-        ModrinthVersion latestVersion = filtered[0];
-        for (int i = 1; i < filtered.Count; i++)
+        // Hilfsmethode für Version-Parsing
+        private static Version TryParseVersion(string versionString)
         {
-            var a = filtered[i].VersionNumber ?? string.Empty;
-            var b = latestVersion.VersionNumber ?? string.Empty;
-            if (string.Compare(a, b, StringComparison.Ordinal) > 0)
-                latestVersion = filtered[i];
+            if (string.IsNullOrWhiteSpace(versionString))
+                return new Version(0, 0, 0);
+            
+            var clean = versionString.Trim().TrimStart('v', 'V');
+            var withoutBuild = clean.Split('+')[0];
+            var withoutPreRelease = withoutBuild.Split('-')[0];
+            
+            if (Version.TryParse(withoutPreRelease, out var version))
+                return version;
+            
+            return new Version(0, 0, 0);
         }
-
-        if (latestVersion.Files == null || latestVersion.Files.Count == 0)
-            throw new Exception("Die gefundene Version enthält keine Dateien.");
-
-        var file = latestVersion.Files[0];
-        var filename = file.Filename ?? $"{projectId}.zip";
-        var outputPath = Path.Combine(outputDir, filename);
-        Directory.CreateDirectory(outputDir);
-
-        using var client = new HttpClient();
-        var url = file.Url ?? throw new Exception("Datei-URL fehlt.");
-        var response = await client.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Download fehlgeschlagen: {response.StatusCode}");
-
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        await using var fileStream = File.Create(outputPath);
-        await stream.CopyToAsync(fileStream);
-
-        return outputPath;
     }
 }
