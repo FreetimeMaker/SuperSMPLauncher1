@@ -1,37 +1,231 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:SuperSMPLauncher.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="SuperSMPLauncher.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="SuperSMP Launcher">
+        Title="SuperSMP Launcher"
+        Width="700" Height="650">
     
     <Window.Background>
         <ImageBrush Source="avares://SuperSMPLauncher/Assets/background.png"
                     Stretch="UniformToFill" />
     </Window.Background>
     
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
-    
-    
-    <StackPanel Margin="20" Spacing="12">
-        <TextBlock Text="Choose a Modloader" FontSize="18" />
-
-        <ComboBox ItemsSource="{Binding Modloaders}"
-                  SelectedItem="{Binding SelectedModloader}"
-                  Width="200" />
-
-        <Button Content="Download Modpack"
-                Command="{Binding DownloadModpackCommand}"
-                Width="200" />
-    </StackPanel>
-
-
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!-- Titel -->
+        <TextBlock Grid.Row="0" 
+                   Text="SuperSMP Launcher" 
+                   FontSize="28" FontWeight="Bold" 
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,20"
+                   Foreground="White" />
+        
+        <!-- Shader Auswahl -->
+        <StackPanel Grid.Row="1" Spacing="5" Margin="0,0,0,15">
+            <TextBlock Text="Shader-Version:" 
+                       FontSize="16" 
+                       Foreground="White" />
+            
+            <ComboBox x:Name="ShaderComboBox"
+                      Width="250"
+                      Background="#404040"
+                      Foreground="White"
+                      BorderBrush="#606060">
+                <ComboBoxItem>Mit Shadern</ComboBoxItem>
+                <ComboBoxItem>Ohne Shader</ComboBoxItem>
+            </ComboBox>
+            
+            <TextBlock Text="'ns' im Versionsnamen = Ohne Shader, sonst Mit Shadern" 
+                       FontSize="12" 
+                       Foreground="#AAAAAA"
+                       Margin="0,5,0,0"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+        
+        <!-- ModLoader Auswahl -->
+        <StackPanel Grid.Row="2" Spacing="5" Margin="0,0,0,15">
+            <TextBlock Text="ModLoader:" 
+                       FontSize="16" 
+                       Foreground="White" />
+            
+            <ComboBox x:Name="ModloaderComboBox"
+                      Width="250"
+                      Background="#404040"
+                      Foreground="White"
+                      BorderBrush="#606060">
+                <ComboBoxItem>Fabric</ComboBoxItem>
+                <ComboBoxItem>Forge</ComboBoxItem>
+                <ComboBoxItem>NeoForge</ComboBoxItem>
+            </ComboBox>
+        </StackPanel>
+        
+        <!-- Minecraft Version Dropdown -->
+        <StackPanel Grid.Row="3" Spacing="5" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" 
+                           Text="Minecraft Version:" 
+                           FontSize="16" 
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
+                
+                <Button Grid.Column="1" 
+                        x:Name="ReloadVersionsButton"
+                        Content="🔄"
+                        Width="30" Height="30"
+                        HorizontalAlignment="Right"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Foreground="White">
+                    <ToolTip.Tip>
+                        Minecraft-Versionen neu laden
+                    </ToolTip.Tip>
+                </Button>
+            </Grid>
+            
+            <!-- Minecraft Version Dropdown -->
+            <ComboBox x:Name="MinecraftVersionComboBox"
+                      Width="250"
+                      Background="#404040"
+                      Foreground="White"
+                      BorderBrush="#606060"
+                      IsEnabled="True">
+                <ComboBoxItem>(Neueste Version)</ComboBoxItem>
+                <!-- Hier werden die Versionen dynamisch eingefügt -->
+            </ComboBox>
+            
+            <!-- Lade-Indikator -->
+            <StackPanel x:Name="LoadingPanel"
+                        Orientation="Horizontal"
+                        Spacing="5"
+                        Margin="0,5,0,0"
+                        IsVisible="False">
+                <TextBlock Text="⏳" FontSize="12" Foreground="Yellow" />
+                <TextBlock Text="Lade verfügbare Versionen..." 
+                           FontSize="12"
+                           Foreground="#AAAAAA" />
+            </StackPanel>
+            
+            <!-- Oder eigene Version eingeben -->
+            <CheckBox x:Name="CustomVersionCheckBox"
+                      Content="Eigene Minecraft-Version eingeben"
+                      Margin="0,10,0,0"
+                      Foreground="White">
+                <CheckBox.Background>
+                    <SolidColorBrush Color="Transparent" />
+                </CheckBox.Background>
+            </CheckBox>
+            
+            <TextBox x:Name="CustomVersionTextBox"
+                     Width="250"
+                     Background="#404040"
+                     Foreground="White"
+                     BorderBrush="#606060"
+                     Watermark="z.B. 1.20.1"
+                     IsVisible="False"
+                     Margin="0,5,0,0" />
+        </StackPanel>
+        
+        <!-- Status-Anzeige -->
+        <Border Grid.Row="4" 
+                Background="#40000000" 
+                BorderBrush="#606060" 
+                BorderThickness="1" 
+                CornerRadius="5"
+                Margin="0,0,0,20"
+                Padding="12">
+            <TextBlock x:Name="StatusText" 
+                       Text="Bereit zum Download" 
+                       TextWrapping="Wrap"
+                       Foreground="White"
+                       FontSize="14" />
+        </Border>
+        
+        <!-- Lade-Indikatoren -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="10" Margin="0,0,0,20">
+            <StackPanel x:Name="LoadingVersionsPanel"
+                        Orientation="Horizontal" Spacing="5"
+                        IsVisible="False">
+                <TextBlock Text="⏳" FontSize="14" Foreground="Yellow" />
+                <TextBlock Text="Lade verfügbare Versionen..." 
+                           Foreground="White" 
+                           VerticalAlignment="Center" />
+            </StackPanel>
+            
+            <StackPanel x:Name="DownloadingPanel"
+                        Orientation="Horizontal" Spacing="5"
+                        IsVisible="False">
+                <TextBlock Text="⏳" FontSize="14" Foreground="Yellow" />
+                <TextBlock Text="Lade Modpack herunter..." 
+                           Foreground="White" 
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
+        
+        <!-- Download Button -->
+        <Button Grid.Row="6" 
+                x:Name="DownloadButton"
+                Content="📥 Modpack herunterladen"
+                Width="280" Height="50"
+                FontSize="16"
+                HorizontalAlignment="Center"
+                Background="#2E7D32"
+                BorderBrush="#1B5E20"
+                Foreground="White"
+                CornerRadius="5"
+                Margin="0,0,0,20">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Cursor" Value="Hand" />
+                </Style>
+            </Button.Styles>
+        </Button>
+        
+        <!-- Info-Bereich -->
+        <Border Grid.Row="7" 
+                Background="#30000000" 
+                CornerRadius="5"
+                Padding="15">
+            <StackPanel Spacing="8">
+                <TextBlock Text="ℹ️ Informationen" 
+                           FontSize="16" 
+                           FontWeight="Bold"
+                           Foreground="White" />
+                
+                <TextBlock Text="• Mit Shadern: Standard-Version mit Shader-Pack" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Ohne Shader: Version mit 'ns' im Namen (z.B. '1.8.0-ns')" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Wähle Fabric, Forge oder NeoForge als ModLoader" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Wähle eine Minecraft-Version aus der Liste" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Oder gib deine eigene Version ein (z.B. 1.20.1)" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Download wird im Ordner 'modpack' gespeichert" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>
