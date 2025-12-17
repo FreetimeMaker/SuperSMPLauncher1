@@ -3,7 +3,7 @@
         x:Class="SuperSMPLauncher.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Title="SuperSMP Launcher"
-        Width="700" Height="650">
+        Width="700" Height="700">
     
     <Window.Background>
         <ImageBrush Source="avares://SuperSMPLauncher/Assets/background.png"
@@ -19,6 +19,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         
@@ -83,19 +85,6 @@
                            Foreground="White"
                            VerticalAlignment="Center"
                            Margin="0,0,10,0" />
-                
-                <Button Grid.Column="1" 
-                        x:Name="ReloadVersionsButton"
-                        Content="🔄"
-                        Width="30" Height="30"
-                        HorizontalAlignment="Right"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Foreground="White">
-                    <ToolTip.Tip>
-                        Minecraft-Versionen neu laden
-                    </ToolTip.Tip>
-                </Button>
             </Grid>
             
             <!-- Minecraft Version Dropdown -->
@@ -120,25 +109,6 @@
                            FontSize="12"
                            Foreground="#AAAAAA" />
             </StackPanel>
-            
-            <!-- Oder eigene Version eingeben -->
-            <CheckBox x:Name="CustomVersionCheckBox"
-                      Content="Eigene Minecraft-Version eingeben"
-                      Margin="0,10,0,0"
-                      Foreground="White">
-                <CheckBox.Background>
-                    <SolidColorBrush Color="Transparent" />
-                </CheckBox.Background>
-            </CheckBox>
-            
-            <TextBox x:Name="CustomVersionTextBox"
-                     Width="250"
-                     Background="#404040"
-                     Foreground="White"
-                     BorderBrush="#606060"
-                     Watermark="z.B. 1.20.1"
-                     IsVisible="False"
-                     Margin="0,5,0,0" />
         </StackPanel>
         
         <!-- Status-Anzeige -->
@@ -196,8 +166,28 @@
             </Button.Styles>
         </Button>
         
+        <!-- Minecraft Starten Button -->
+        <Button Grid.Row="7" 
+                x:Name="StartMinecraftButton"
+                Content="🚀 Minecraft Starten"
+                Width="280" Height="50"
+                FontSize="16"
+                HorizontalAlignment="Center"
+                Background="#1565C0"
+                BorderBrush="#0D47A1"
+                Foreground="White"
+                CornerRadius="5"
+                Margin="0,0,0,20"
+                IsEnabled="False">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Cursor" Value="Hand" />
+                </Style>
+            </Button.Styles>
+        </Button>
+        
         <!-- Info-Bereich -->
-        <Border Grid.Row="7" 
+        <Border Grid.Row="8" 
                 Background="#30000000" 
                 CornerRadius="5"
                 Padding="15">
@@ -219,13 +209,35 @@
                 <TextBlock Text="• Wähle eine Minecraft-Version aus der Liste" 
                            Foreground="#CCCCCC" 
                            TextWrapping="Wrap" />
-                <TextBlock Text="• Oder gib deine eigene Version ein (z.B. 1.20.1)" 
+                <TextBlock Text="• Nach dem Download: Klicke auf 'Minecraft Starten'" 
                            Foreground="#CCCCCC" 
                            TextWrapping="Wrap" />
-                <TextBlock Text="• Download wird im Ordner 'modpack' gespeichert" 
+                <TextBlock Text="• Verbindet automatisch mit SuperSMP Server: supersmp.fun" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
+                <TextBlock Text="• Download wird im Ordner 'instance' installiert" 
                            Foreground="#CCCCCC" 
                            TextWrapping="Wrap" />
             </StackPanel>
         </Border>
+        
+        <!-- Reload Versions Button -->
+        <Button Grid.Row="9"
+                x:Name="ReloadVersionsButton"
+                Content="🔄 Versionen neu laden"
+                Width="200" Height="35"
+                FontSize="14"
+                HorizontalAlignment="Right"
+                Background="#424242"
+                BorderBrush="#616161"
+                Foreground="White"
+                CornerRadius="3"
+                Margin="0,10,0,0">
+            <Button.Styles>
+                <Style Selector="Button">
+                    <Setter Property="Cursor" Value="Hand" />
+                </Style>
+            </Button.Styles>
+        </Button>
     </Grid>
 </Window>
