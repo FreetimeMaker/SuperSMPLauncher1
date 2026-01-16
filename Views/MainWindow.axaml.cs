@@ -19,11 +19,14 @@ namespace SuperSMPLauncher.Views
     {
         private readonly ModpackDownloader _downloader = new ModpackDownloader();
         private readonly ModrinthApi _api = new ModrinthApi();
+        private readonly MinecraftLauncher _minecraftLauncher = new MinecraftLauncher();
         private bool _isDownloading = false;
         private bool _isLoadingVersions = false;
         private List<string> _availableMinecraftVersions = new List<string>();
         private string _systemMinecraftPath = null;
         private string _modpackPath = null;
+        private string _selectedGameVersion = null;
+        private string _selectedModloader = null;
 
         public MainWindow()
         {
@@ -449,14 +452,19 @@ namespace SuperSMPLauncher.Views
                 var selectedContent = MinecraftVersionComboBox.SelectedItem?.ToString();
                 string minecraftVersion;
                 
+                // Speichere die ausgewählten Optionen
+                _selectedModloader = modloader;
+                
                 if (selectedContent == "(Neueste Version)" || string.IsNullOrEmpty(selectedContent))
                 {
                     minecraftVersion = string.Empty;
+                    _selectedGameVersion = "1.20.1"; // Standard-Version
                     StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} (neueste Version)...";
                 }
                 else
                 {
                     minecraftVersion = selectedContent;
+                    _selectedGameVersion = minecraftVersion;
                     StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} (Minecraft {minecraftVersion})...";
                 }
 
@@ -507,7 +515,7 @@ namespace SuperSMPLauncher.Views
                 StatusText.Text = "⏳ Erstelle Installationsanleitung...";
                 CreateInstallationGuide(_modpackPath);
 
-                StatusText.Text = $"✅ {shaderOption} erfolgreich heruntergeladen!";
+                StatusText.Text = $"✅ {shaderOption} erfolgreich heruntergeladen!\n\n🚀 Klicke 'Minecraft Starten' um das Spiel zu launchen!";
                 StartMinecraftButton.IsEnabled = true;
                 
                 // Zeige Minecraft Status an
@@ -517,8 +525,7 @@ namespace SuperSMPLauncher.Views
                 }
                 else
                 {
-                    StatusText.Text += "\n⚠️ Minecraft-Pfad nicht automatisch gefunden.";
-                    StatusText.Text += "\nℹ️ Du kannst es trotzdem manuell installieren.";
+                    StatusText.Text += "\n⚠️ Minecraft-Pfad wird automatisch konfiguriert.";
                 }
             }
             catch (Exception ex)
@@ -687,57 +694,62 @@ pause";
             try
             {
                 StartMinecraftButton.IsEnabled = false;
+                DownloadButton.IsEnabled = false;
                 
                 if (string.IsNullOrEmpty(_modpackPath) || !Directory.Exists(_modpackPath))
                 {
                     StatusText.Text = "⚠️ Modpack nicht gefunden!\nBitte zuerst Modpack herunterladen.";
                     await Task.Delay(3000);
                     StartMinecraftButton.IsEnabled = true;
+                    DownloadButton.IsEnabled = true;
                     return;
                 }
                 
-                // IP in Zwischenablage kopieren
-                await CopyToClipboardAsync("supersmp.fun");
+                StatusText.Text = "🚀 Starte Minecraft...\n⏳ Bitte warten...";
                 
-                // Öffne Modpack Ordner
-                OpenModpackFolder();
-                
-                // Zeige entsprechende Nachricht
-                if (string.IsNullOrEmpty(_systemMinecraftPath))
+                try
                 {
-                    StatusText.Text = "📁 Modpack-Ordner geöffnet!\n\n" +
-                                     "DA MINECRAFT NICHT GEFUNDEN WURDE:\n" +
-                                     "1. Lies INSTALLATION.txt im geöffneten Ordner\n" +
-                                     "2. Folge der Anleitung für dein System\n" +
-                                     "3. Server-IP wurde kopiert: supersmp.fun\n\n" +
-                                     "💡 Tipp: Prüfe ob Minecraft in diesem Pfad ist:\n" +
-                                     $"C:\\Users\\{Environment.UserName}\\AppData\\Roaming\\.minecraft";
+                    // Starte Minecraft mit dem heruntergeladenen Modpack
+                    await _minecraftLauncher.LaunchMinecraftAsync(
+                        modpackPath: _modpackPath,
+                        gameVersion: _selectedGameVersion ?? "1.20.1",
+                        modloader: _selectedModloader ?? "fabric"
+                    );
+                    
+                    StatusText.Text = "✅ Minecraft gestartet!\n" +
+                                     "🎮 Das Spiel sollte sich jetzt öffnen.\n" +
+                                     "🔗 Der Server wird automatisch verbunden: supersmp.fun";
+                    
+                    // Halte die Nachricht 8 Sekunden
+                    await Task.Delay(8000);
                 }
-                else
+                catch (Exception ex)
                 {
-                    StatusText.Text = $"✅ Minecraft gefunden!\nPfad: {_systemMinecraftPath}\n\n" +
-                                     "SO GEHT'S WEITER:\n" +
-                                     "1. Öffne Modpack Ordner (wird geöffnet)\n" +
-                                     "2. Lies INSTALLATION.txt\n" +
-                                     "3. Folge der Anleitung\n" +
-                                     "4. Server-IP wurde kopiert: supersmp.fun";
+                    StatusText.Text = $"❌ Fehler beim Starten: {ex.Message}\n\n" +
+                                     "MANUELLE LÖSUNG:\n" +
+                                     "1. Öffne Minecraft Launcher\n" +
+                                     "2. Wähle das Profil 'SuperSMP'\n" +
+                                     "3. Klicke 'Play'\n" +
+                                     "4. Server: supersmp.fun";
+                    
+                    Console.WriteLine($"Fehler: {ex}");
+                    
+                    // Zeige Alternative
+                    OpenModpackFolder();
+                    
+                    await Task.Delay(5000);
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"❌ Fehler: {ex.Message}\n\n" +
-                                 "MANUELLE LÖSUNG:\n" +
-                                 "1. Öffne Explorer\n" +
-                                 "2. Gehe zu Ordner 'versions'\n" +
-                                 "3. Lies INSTALLATION.txt\n" +
-                                 "4. Server: supersmp.fun";
-                
-                await CopyToClipboardAsync("supersmp.fun");
+                StatusText.Text = $"❌ Unerwarteter Fehler: {ex.Message}";
+                Console.WriteLine($"Fehler: {ex}");
+                await Task.Delay(5000);
             }
             finally
             {
-                await Task.Delay(5000);
                 StartMinecraftButton.IsEnabled = true;
+                DownloadButton.IsEnabled = true;
             }
         }
 
