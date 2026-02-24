@@ -219,6 +219,9 @@
                 <TextBlock Text="• Ohne Shader: Version mit 'ns' im Namen (z.B. '1.8.0-ns')" 
                            Foreground="#CCCCCC" 
                            TextWrapping="Wrap" />
+                <TextBlock Text="• Wähle Lunar Client Features (LC im Namen = mit Features)" 
+                           Foreground="#CCCCCC" 
+                           TextWrapping="Wrap" />
                 <TextBlock Text="• Wähle Fabric, Forge oder NeoForge als ModLoader" 
                            Foreground="#CCCCCC" 
                            TextWrapping="Wrap" />

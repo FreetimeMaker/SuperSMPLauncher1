@@ -449,7 +449,7 @@ namespace SuperSMPLauncher.Views
             {
                 var shaderOption = GetShaderOption();
                 var modloader = GetModloader();
-                var lcfOption = GetLunarClientFeatures();
+                var LCfOption = GetLunarClientFeatures();
                 
                 var selectedContent = MinecraftVersionComboBox.SelectedItem?.ToString();
                 string minecraftVersion;
@@ -461,33 +461,35 @@ namespace SuperSMPLauncher.Views
                 {
                     minecraftVersion = string.Empty;
                     _selectedGameVersion = "1.20.1"; // Standard-Version
-                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({lcfOption}) (neueste Version)...";
+                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({LCfOption}) (neueste Version)...";
                 }
                 else
                 {
                     minecraftVersion = selectedContent;
                     _selectedGameVersion = minecraftVersion;
-                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({lcfOption}) (Minecraft {minecraftVersion})...";
+                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({LCfOption}) (Minecraft {minecraftVersion})...";
                 }
 
                 string zipPath;
                 
                 if (string.IsNullOrEmpty(minecraftVersion))
                 {
-                    zipPath = await _downloader.DownloadLatestForLoaderAndShaderAsync(
+                    zipPath = await _downloader.DownloadLatestForLoaderShaderAndLCfAsync(
                         projectId: "EDFggNY3",
                         modloader: modloader,
                         shaderOption: shaderOption,
+                        LCfOption: LCfOption,
                         outputDir: "modpack"
                     );
                 }
                 else
                 {
-                    zipPath = await _downloader.DownloadLatestForLoaderMinecraftAndShaderAsync(
+                    zipPath = await _downloader.DownloadLatestForLoaderMinecraftShaderAndLCfAsync(
                         projectId: "EDFggNY3",
                         modloader: modloader,
                         minecraftVersion: minecraftVersion,
                         shaderOption: shaderOption,
+                        LCfOption: LCfOption,
                         outputDir: "modpack"
                     );
                 }

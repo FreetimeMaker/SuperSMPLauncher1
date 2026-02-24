@@ -29,11 +29,12 @@ namespace SuperSMPLauncher.Services
             }
         };
 
-        // NEUE METHODE: Filtert nach Loader und Shader-Option
-        public async Task<string> DownloadLatestForLoaderAndShaderAsync(
+        // NEUE METHODE: Filtert nach Loader, Shader-Option und Lunar Client Features
+        public async Task<string> DownloadLatestForLoaderShaderAndLCfAsync(
             string projectId, 
             string modloader, 
             string shaderOption,
+            string LCfOption,
             string outputDir)
         {
             // Parameter validieren
@@ -48,20 +49,20 @@ namespace SuperSMPLauncher.Services
             // Passende Loader-Aliase bestimmen
             HashSet<string> aliasList = GetLoaderAliases(modloader);
 
-            // Filtere Versionen nach Loader und Shader-Option
-            var filteredVersions = FilterVersionsByLoaderAndShader(allVersions, aliasList, shaderOption);
+            // Filtere Versionen nach Loader, Shader-Option und Lunar Client Features
+            var filteredVersions = FilterVersionsByLoaderShaderAndLCf(allVersions, aliasList, shaderOption, LCfOption);
 
             Console.WriteLine($"📊 Statistik: {allVersions.Length} Versionen total, {filteredVersions.Count} passend");
 
             if (filteredVersions.Count == 0)
             {
-                throw CreateNoMatchingVersionError(allVersions, modloader, null, shaderOption);
+                throw CreateNoMatchingVersionError(allVersions, modloader, null, shaderOption, LCfOption);
             }
 
             // Neueste Version finden
             var latestVersion = FindLatestVersion(filteredVersions);
             
-            Console.WriteLine($"\n🎯 Gefundene neueste Version ({shaderOption}):");
+            Console.WriteLine($"\n🎯 Gefundene neueste Version ({shaderOption}, {LCfOption}):");
             Console.WriteLine($"   • Version: {latestVersion.VersionNumber}");
             Console.WriteLine($"   • Loader: {string.Join(", ", latestVersion.Loaders)}");
             Console.WriteLine($"   • Minecraft: {string.Join(", ", latestVersion.GameVersions)}");
@@ -70,12 +71,13 @@ namespace SuperSMPLauncher.Services
             return await DownloadVersionFile(latestVersion, projectId, outputDir);
         }
 
-        // NEUE METHODE: Filtert nach Loader, Minecraft-Version und Shader-Option
-        public async Task<string> DownloadLatestForLoaderMinecraftAndShaderAsync(
+        // NEUE METHODE: Filtert nach Loader, Minecraft-Version, Shader-Option und Lunar Client Features
+        public async Task<string> DownloadLatestForLoaderMinecraftShaderAndLCfAsync(
             string projectId, 
             string modloader, 
             string minecraftVersion,
             string shaderOption,
+            string LCfOption,
             string outputDir)
         {
             // Parameter validieren
@@ -90,21 +92,21 @@ namespace SuperSMPLauncher.Services
             // Passende Loader-Aliase bestimmen
             HashSet<string> aliasList = GetLoaderAliases(modloader);
 
-            // Filtere Versionen nach Loader, Minecraft-Version und Shader-Option
-            var filteredVersions = FilterVersionsByLoaderMinecraftAndShader(
-                allVersions, aliasList, minecraftVersion, shaderOption);
+            // Filtere Versionen nach Loader, Minecraft-Version, Shader-Option und Lunar Client Features
+            var filteredVersions = FilterVersionsByLoaderMinecraftShaderAndLCf(
+                allVersions, aliasList, minecraftVersion, shaderOption, LCfOption);
 
             Console.WriteLine($"📊 Statistik: {allVersions.Length} Versionen total, {filteredVersions.Count} passend");
 
             if (filteredVersions.Count == 0)
             {
-                throw CreateNoMatchingVersionError(allVersions, modloader, minecraftVersion, shaderOption);
+                throw CreateNoMatchingVersionError(allVersions, modloader, minecraftVersion, shaderOption, LCfOption);
             }
 
             // Neueste Version finden
             var latestVersion = FindLatestVersion(filteredVersions);
             
-            Console.WriteLine($"\n🎯 Gefundene neueste Version ({shaderOption}):");
+            Console.WriteLine($"\n🎯 Gefundene neueste Version ({shaderOption}, {LCfOption}):");
             Console.WriteLine($"   • Version: {latestVersion.VersionNumber}");
             Console.WriteLine($"   • Loader: {string.Join(", ", latestVersion.Loaders)}");
             Console.WriteLine($"   • Minecraft: {string.Join(", ", latestVersion.GameVersions)}");
@@ -119,10 +121,11 @@ namespace SuperSMPLauncher.Services
             string modloader, 
             string outputDir)
         {
-            return await DownloadLatestForLoaderAndShaderAsync(
+            return await DownloadLatestForLoaderShaderAndLCfAsync(
                 projectId, 
                 modloader, 
                 "Mit Shadern", // Standard: Mit Shadern
+                "Without Lunar Client Features", // Standard: Ohne LCF
                 outputDir
             );
         }
@@ -133,11 +136,45 @@ namespace SuperSMPLauncher.Services
             string minecraftVersion,
             string outputDir)
         {
-            return await DownloadLatestForLoaderMinecraftAndShaderAsync(
+            return await DownloadLatestForLoaderMinecraftShaderAndLCfAsync(
                 projectId, 
                 modloader, 
                 minecraftVersion,
                 "Mit Shadern", // Standard: Mit Shadern
+                "Without Lunar Client Features", // Standard: Ohne LCF
+                outputDir
+            );
+        }
+
+        // ZUSÄTZLICHE ALTE METHODEN MIT SHADER-SUPPORT
+        public async Task<string> DownloadLatestForLoaderAndShaderAsync(
+            string projectId, 
+            string modloader, 
+            string shaderOption,
+            string outputDir)
+        {
+            return await DownloadLatestForLoaderShaderAndLCfAsync(
+                projectId, 
+                modloader, 
+                shaderOption,
+                "Without Lunar Client Features", // Standard: Ohne LCF
+                outputDir
+            );
+        }
+
+        public async Task<string> DownloadLatestForLoaderMinecraftAndShaderAsync(
+            string projectId, 
+            string modloader, 
+            string minecraftVersion,
+            string shaderOption,
+            string outputDir)
+        {
+            return await DownloadLatestForLoaderMinecraftShaderAndLCfAsync(
+                projectId, 
+                modloader, 
+                minecraftVersion,
+                shaderOption,
+                "Without Lunar Client Features", // Standard: Ohne LCF
                 outputDir
             );
         }
@@ -163,6 +200,87 @@ namespace SuperSMPLauncher.Services
             {
                 return new HashSet<string>(StringComparer.OrdinalIgnoreCase) { desiredLoader };
             }
+        }
+
+        private List<ModrinthVersion> FilterVersionsByLoaderShaderAndLCf(
+            ModrinthVersion[] allVersions, 
+            HashSet<string> aliasList, 
+            string shaderOption,
+            string LCfOption)
+        {
+            var filtered = new List<ModrinthVersion>();
+            
+            Console.WriteLine($"\n🎯 Filtere nach: Loader + Shader='{shaderOption}' + LCF='{LCfOption}'");
+            Console.WriteLine($"   Regel: 'ns' im Namen = Ohne Shader, sonst Mit Shadern");
+            Console.WriteLine($"   Regel: 'LC' im Namen = Mit Lunar Client Features, sonst Ohne");
+            
+            foreach (var version in allVersions)
+            {
+                // Prüfe Loader
+                if (!HasMatchingLoader(version, aliasList))
+                    continue;
+
+                // Prüfe Shader-Option mit "ns"-Logik
+                bool matchesShader = MatchesShaderOption(version, shaderOption);
+                
+                // Prüfe Lunar Client Features mit "LCf"-Logik
+                bool matchesLCf = MatchesLCfOption(version, LCfOption);
+                
+                if (matchesShader && matchesLCf)
+                {
+                    filtered.Add(version);
+                    Console.WriteLine($"   ✓ {version.VersionNumber}: Passt zu '{shaderOption}' + '{LCfOption}'");
+                }
+                else
+                {
+                    Console.WriteLine($"   ✗ {version.VersionNumber}: Passt NICHT zu '{shaderOption}' + '{LCfOption}'");
+                }
+            }
+
+            return filtered;
+        }
+
+        private List<ModrinthVersion> FilterVersionsByLoaderMinecraftShaderAndLCf(
+            ModrinthVersion[] allVersions, 
+            HashSet<string> aliasList, 
+            string minecraftVersion,
+            string shaderOption,
+            string LCfOption)
+        {
+            var filtered = new List<ModrinthVersion>();
+            
+            Console.WriteLine($"\n🎯 Filtere nach: Loader + MC {minecraftVersion} + Shader='{shaderOption}' + LCF='{LCfOption}'");
+            Console.WriteLine($"   Regel: 'ns' im Namen = Ohne Shader, sonst Mit Shadern");
+            Console.WriteLine($"   Regel: 'LC' im Namen = Mit Lunar Client Features, sonst Ohne");
+            
+            foreach (var version in allVersions)
+            {
+                // Prüfe Loader
+                if (!HasMatchingLoader(version, aliasList))
+                    continue;
+
+                // Prüfe Minecraft-Version
+                if (!HasMinecraftVersion(version, minecraftVersion))
+                    continue;
+
+                // Prüfe Shader-Option
+                bool matchesShader = MatchesShaderOption(version, shaderOption);
+                
+                // Prüfe Lunar Client Features
+                bool matchesLCf = MatchesLCfOption(version, LCfOption);
+                
+                if (matchesShader && matchesLCf)
+                {
+                    filtered.Add(version);
+                    Console.WriteLine($"   ✓ {version.VersionNumber}: Passt zu '{shaderOption}' + '{LCfOption}' (MC {minecraftVersion})");
+                }
+                else
+                {
+                    Console.WriteLine($"   ✗ {version.VersionNumber}: Passt NICHT zu '{shaderOption}' + '{LCfOption}' (MC {minecraftVersion})");
+                }
+            }
+
+            return filtered;
         }
 
         private List<ModrinthVersion> FilterVersionsByLoaderAndShader(
@@ -268,6 +386,32 @@ namespace SuperSMPLauncher.Services
             return false;
         }
 
+        private bool MatchesLCfOption(ModrinthVersion version, string LCfOption)
+        {
+            // LUNAR CLIENT FEATURES LOGIK:
+            // - Enthält "LC" im Versionsnamen = Mit Lunar Client Features
+            // - Enthält KEIN "LC" = Ohne Lunar Client Features (Standard)
+            
+            if (string.IsNullOrWhiteSpace(version.VersionNumber))
+                return LCfOption == "Without Lunar Client Features"; // Fallback
+            
+            var versionLower = version.VersionNumber.ToLowerInvariant();
+            
+            // Prüfe ob "LC" im Namen enthalten ist
+            bool hasLCInName = versionLower.Contains("LC");
+            
+            if (LCfOption == "With Lunar Client Features")
+            {
+                // Für "With Lunar Client Features": MUSS "LC" enthalten
+                return hasLCInName;
+            }
+            else // "Without Lunar Client Features"
+            {
+                // Für "Without Lunar Client Features": DARF NICHT "LC" enthalten
+                return !hasLCInName;
+            }
+        }
+
         private bool MatchesShaderOption(ModrinthVersion version, string shaderOption)
         {
             // EINFACHE "ns"-LOGIK:
@@ -298,7 +442,8 @@ namespace SuperSMPLauncher.Services
             ModrinthVersion[] allVersions, 
             string modloader, 
             string minecraftVersion,
-            string shaderOption)
+            string shaderOption,
+            string LCfOption = null)
         {
             // Sammle alle verfügbaren Kombinationen
             var availableInfo = new List<string>();
@@ -310,8 +455,9 @@ namespace SuperSMPLauncher.Services
                     var loaders = string.Join(", ", v.Loaders);
                     var mcVersions = string.Join(", ", v.GameVersions);
                     var shaderHint = DetectShaderHint(v);
+                    var LCfHint = DetectLCfHint(v);
                     
-                    availableInfo.Add($"• {v.VersionNumber}: {loaders} | MC: {mcVersions} | {shaderHint}");
+                    availableInfo.Add($"• {v.VersionNumber}: {loaders} | MC: {mcVersions} | {shaderHint} | {LCfHint}");
                 }
             }
 
@@ -319,13 +465,19 @@ namespace SuperSMPLauncher.Services
             errorMessage.AppendLine($"❌ Keine passende Version gefunden!");
             errorMessage.AppendLine($"   Gesucht: Loader='{modloader}', Shader='{shaderOption}'");
             
+            if (!string.IsNullOrWhiteSpace(LCfOption))
+            {
+                errorMessage.AppendLine($"          LCF='{LCfOption}'");
+            }
+            
             if (!string.IsNullOrWhiteSpace(minecraftVersion))
             {
                 errorMessage.AppendLine($"          Minecraft='{minecraftVersion}'");
             }
             
-            errorMessage.AppendLine($"\n📋 Verfügbare Versionen im Projekt (mit Shader-Erkennung):");
+            errorMessage.AppendLine($"\n📋 Verfügbare Versionen im Projekt (mit Shader- & LCF-Erkennung):");
             errorMessage.AppendLine($"   Regel: 'ns' im Namen = Ohne Shader, sonst Mit Shadern");
+            errorMessage.AppendLine($"   Regel: 'LC' im Namen = Mit Lunar Client Features, sonst Ohne");
             
             // Zeige die 10 neuesten Versionen
             var recentVersions = availableInfo.Take(10).ToList();
@@ -340,8 +492,25 @@ namespace SuperSMPLauncher.Services
             }
             
             errorMessage.AppendLine($"\n💡 Tipp: Versionen mit 'ns' im Namen sind ohne Shader.");
+            errorMessage.AppendLine($"💡 Tipp: Versionen mit 'LC' im Namen haben Lunar Client Features.");
 
             return new Exception(errorMessage.ToString());
+        }
+
+        private string DetectLCfHint(ModrinthVersion version)
+        {
+            // Einfache "LC"-Erkennung
+            if (!string.IsNullOrWhiteSpace(version.VersionNumber))
+            {
+                var versionLower = version.VersionNumber.ToLowerInvariant();
+                
+                if (versionLower.Contains("LC"))
+                    return "🌙 Mit Lunar Client Features (enthält 'LC')";
+                else
+                    return "🚫 Ohne Lunar Client Features (kein 'LC')";
+            }
+            
+            return "❓ Unklar";
         }
 
         private string DetectShaderHint(ModrinthVersion version)
