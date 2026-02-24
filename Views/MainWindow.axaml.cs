@@ -36,6 +36,7 @@ namespace SuperSMPLauncher.Views
             ShaderComboBox.SelectedIndex = 0;
             ModloaderComboBox.SelectedIndex = 0;
             MinecraftVersionComboBox.SelectedIndex = 0;
+            LCFComboBox.SelectedIndex = 0;
             
             // Event-Handler
             DownloadButton.Click += OnDownloadButtonClick;
@@ -448,6 +449,7 @@ namespace SuperSMPLauncher.Views
             {
                 var shaderOption = GetShaderOption();
                 var modloader = GetModloader();
+                var lcfOption = GetLunarClientFeatures();
                 
                 var selectedContent = MinecraftVersionComboBox.SelectedItem?.ToString();
                 string minecraftVersion;
@@ -459,13 +461,13 @@ namespace SuperSMPLauncher.Views
                 {
                     minecraftVersion = string.Empty;
                     _selectedGameVersion = "1.20.1"; // Standard-Version
-                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} (neueste Version)...";
+                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({lcfOption}) (neueste Version)...";
                 }
                 else
                 {
                     minecraftVersion = selectedContent;
                     _selectedGameVersion = minecraftVersion;
-                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} (Minecraft {minecraftVersion})...";
+                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({lcfOption}) (Minecraft {minecraftVersion})...";
                 }
 
                 string zipPath;
@@ -886,6 +888,34 @@ pause";
             catch
             {
                 return "Mit Shadern";
+            }
+        }
+
+        private string GetLunarClientFeatures()
+        {
+            try
+            {
+                var selectedItem = LCFComboBox.SelectedItem;
+                
+                if (selectedItem is ComboBoxItem comboBoxItem)
+                {
+                    var content = comboBoxItem.Content?.ToString();
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        return content;
+                    }
+                }
+                
+                if (selectedItem is string str)
+                {
+                    return str;
+                }
+                
+                return selectedItem?.ToString() ?? "With Lunar Client Features";
+            }
+            catch
+            {
+                return "With Lunar Client Features";
             }
         }
 
