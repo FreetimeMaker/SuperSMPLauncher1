@@ -20,6 +20,7 @@ namespace SuperSMPLauncher.Views
         private readonly ModpackDownloader _downloader = new ModpackDownloader();
         private readonly ModrinthApi _api = new ModrinthApi();
         private readonly MinecraftLauncher _minecraftLauncher = new MinecraftLauncher();
+        private readonly MinecraftInstaller _minecraftInstaller = new MinecraftInstaller();
         private bool _isDownloading = false;
         private bool _isLoadingVersions = false;
         private List<string> _availableMinecraftVersions = new List<string>();
@@ -459,9 +460,9 @@ namespace SuperSMPLauncher.Views
                 
                 if (selectedContent == "(Neueste Version)" || string.IsNullOrEmpty(selectedContent))
                 {
-                    minecraftVersion = string.Empty;
-                    _selectedGameVersion = "1.20.1"; // Standard-Version
-                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({LCfOption}) (neueste Version)...";
+                    minecraftVersion = GetSelectedMinecraftVersion();
+                    _selectedGameVersion = minecraftVersion;
+                    StatusText.Text = $"⏳ Lade {shaderOption.ToLower()} für {modloader} ({LCfOption}) (Minecraft {minecraftVersion})...";
                 }
                 else
                 {
@@ -709,14 +710,29 @@ pause";
                     return;
                 }
                 
-                StatusText.Text = "🚀 Starte Minecraft...\n⏳ Bitte warten...";
+                var gameVersion = _selectedGameVersion;
+                if (string.IsNullOrWhiteSpace(gameVersion))
+                {
+                    gameVersion = GetSelectedMinecraftVersion();
+                    _selectedGameVersion = gameVersion;
+                }
+
+                StatusText.Text = $"🚀 Starte Minecraft {gameVersion}...\n⏳ Bitte warten...";
                 
                 try
                 {
+                    // Stelle sicher, dass die gewählte Minecraft-Version installiert ist
+                    var minecraftPath = _systemMinecraftPath ?? GetDefaultMinecraftPath();
+                    if (!IsMinecraftVersionInstalled(gameVersion))
+                    {
+                        StatusText.Text = $"⏳ Installiere Minecraft {gameVersion}...";
+                        await _minecraftInstaller.InstallMinecraftVersionAsync(gameVersion, minecraftPath);
+                    }
+
                     // Starte Minecraft mit dem heruntergeladenen Modpack
                     await _minecraftLauncher.LaunchMinecraftAsync(
                         modpackPath: _modpackPath,
-                        gameVersion: _selectedGameVersion ?? "1.20.1",
+                        gameVersion: gameVersion,
                         modloader: _selectedModloader ?? "fabric"
                     );
                     
@@ -947,6 +963,55 @@ pause";
             {
                 return "fabric";
             }
+        }
+
+        private string GetSelectedMinecraftVersion()
+        {
+            if (_availableMinecraftVersions != null && _availableMinecraftVersions.Count > 0)
+            {
+                return _availableMinecraftVersions[0];
+            }
+
+            return "1.20.1";
+        }
+
+        private bool IsMinecraftVersionInstalled(string version)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(version))
+                    return false;
+
+                string path = _systemMinecraftPath ?? GetDefaultMinecraftPath();
+                string versionFolder = Path.Combine(path, "versions", version);
+                string jarPath = Path.Combine(versionFolder, $"{version}.jar");
+                return Directory.Exists(versionFolder) && File.Exists(jarPath);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private string GetDefaultMinecraftPath()
+        {
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                return Path.Combine(appData, ".minecraft");
+            }
+            else if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return Path.Combine(home, ".minecraft");
+            }
+            else if (Environment.OSVersion.Platform == PlatformID.MacOSX)
+            {
+                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return Path.Combine(home, "Library", "Application Support", "minecraft");
+            }
+
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".minecraft");
         }
     }
 }
