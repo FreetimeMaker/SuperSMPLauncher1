@@ -81,15 +81,32 @@ namespace SuperSMPLauncher.Services
                 // 5. Erstelle notwendige Verzeichnisse
                 await EnsureMinecraftStructureAsync();
 
-                // 6. Kopiere Modpack-Dateien
+                // 6. Installiere Minecraft-Version falls nötig
+                if (!string.IsNullOrWhiteSpace(gameVersion))
+                {
+                    await EnsureMinecraftVersionInstalledAsync(gameVersion);
+                }
+
+                // 7. Kopiere Modpack-Dateien
                 if (!string.IsNullOrEmpty(modpackPath) && Directory.Exists(modpackPath))
                 {
                     Console.WriteLine("📁 Kopiere Modpack-Dateien...");
                     CopyModpackToMinecraft(modpackPath);
                 }
 
-                // 7. Starte Minecraft mit vereinfachtem Ansatz
-                await LaunchMinecraftSimplifiedAsync(gameVersion);
+                // 8. Starte Minecraft mit installiertem Spielstand
+                var versionInfo = !string.IsNullOrWhiteSpace(gameVersion)
+                    ? await DownloadVersionInfoAsync(gameVersion)
+                    : null;
+
+                if (versionInfo != null)
+                {
+                    await LaunchMinecraftProcessAsync(gameVersion, versionInfo);
+                }
+                else
+                {
+                    await LaunchMinecraftSimplifiedAsync(gameVersion);
+                }
 
                 return true;
             }
@@ -414,6 +431,36 @@ namespace SuperSMPLauncher.Services
             {
                 Console.WriteLine($"Fehler bei Minecraft-Pfad-Suche: {ex.Message}");
                 _minecraftPath = null;
+            }
+        }
+
+        /// <summary>
+        /// Stellt sicher, dass die gewünschte Minecraft-Version installiert ist
+        /// </summary>
+        private async Task EnsureMinecraftVersionInstalledAsync(string gameVersion)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(gameVersion))
+                    return;
+
+                string versionFolder = Path.Combine(_minecraftPath, "versions", gameVersion);
+                string jarPath = Path.Combine(versionFolder, $"{gameVersion}.jar");
+
+                if (File.Exists(jarPath))
+                {
+                    Console.WriteLine($"✅ Minecraft-Version {gameVersion} bereits installiert.");
+                    return;
+                }
+
+                Console.WriteLine($"⏳ Installiere Minecraft-Version {gameVersion}...");
+                var installer = new MinecraftInstaller();
+                await installer.InstallMinecraftVersionAsync(gameVersion, _minecraftPath);
+                Console.WriteLine($"✅ Minecraft-Version {gameVersion} installiert.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Fehler beim Installieren der Minecraft-Version {gameVersion}: {ex.Message}");
             }
         }
 
